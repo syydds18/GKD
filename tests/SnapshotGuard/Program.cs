@@ -1,0 +1,18 @@
+using System;
+using System.Collections.Generic;
+using Outline.Core;
+using Outline.Addin;
+var data=new SheetData {MaxRow=4,MaxCol=3};
+data.Values[2]=new Dictionary<int,object>{{1,"一"},{2,"工程"},{3,100.0}};
+data.Formulas[2]=new Dictionary<int,string>{{3,"SUM(C3:C4)"}};
+var hash=SnapshotGuard.Fingerprint(data);
+if(hash!=SnapshotGuard.Fingerprint(data))throw new Exception("nondeterministic");
+data.OutlineLevels[3]=1;
+if(hash!=SnapshotGuard.Fingerprint(data))throw new Exception("outline-only operation invalidates own undo");
+data.Values[2][3]=110.0;
+if(hash==SnapshotGuard.Fingerprint(data))throw new Exception("amount change not detected");
+data.Values[2][3]=100.0;data.Formulas[2][3]="SUM(C3:C5)";
+if(hash==SnapshotGuard.Fingerprint(data))throw new Exception("formula change not detected");
+data.Formulas[2][3]="SUM(C3:C4)";data.MaxRow=5;
+if(hash==SnapshotGuard.Fingerprint(data))throw new Exception("range change not detected");
+Console.WriteLine("PASS: 5 snapshot fingerprint checks");

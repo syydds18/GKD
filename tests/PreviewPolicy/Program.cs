@@ -1,0 +1,25 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Outline.Addin;
+using Outline.Core;
+int checks=0;void Check(bool ok,string label){if(!ok)throw new Exception(label);checks++;}
+var list=new List<SumProposal>{new SumProposal{Row=2,Col=3,OriginalText=""},new SumProposal{Row=3,Col=3,OriginalText="0"},new SumProposal{Row=4,Col=3,OriginalText="",HasExistingFormula=true},new SumProposal{Row=5,Col=3,OriginalText="  "}};
+Check(PreviewPolicy.BlankIndices(list).SequenceEqual(new[]{0,3}),"blank-only selection must exclude zero and empty-result formulas");
+Check(PreviewPolicy.NextExisting(list,-1)==1,"first existing");
+Check(PreviewPolicy.NextExisting(list,1)==2,"next formula even with blank result");
+Check(PreviewPolicy.NextExisting(list,2)==1,"wrap to next existing");
+Check(PreviewPolicy.NextExisting(new[]{list[0]},0)==-1,"all blank returns none");
+Check(PreviewPolicy.Kind(list[1])=="已有数值"&&PreviewPolicy.Kind(list[2])=="已有公式"&&PreviewPolicy.Kind(list[0])=="原值为空","state labels");
+var s=new SheetData{MaxRow=4,MaxCol=3};s.Values[2]=new Dictionary<int,object>{{1,"项目"},{3,123}};s.Formulas[2]=new Dictionary<int,string>{{3,"SUM(C3:C4)"}};
+string tip=PreviewPolicy.RowPreview(s,2);Check(tip.Contains("A2")&&tip.Contains("项目")&&tip.Contains("=SUM(C3:C4)")&&tip.Contains("123"),"tooltip row must contain coordinates, value and formula");
+Check(PreviewPolicy.Selection(list,"all").SequenceEqual(new[]{true,true,true,true}),"all selects every proposal");
+Check(PreviewPolicy.Selection(list,"none").All(v=>!v),"none clears every proposal");
+Check(PreviewPolicy.Selection(list,"blank").SequenceEqual(new[]{true,false,false,true}),"blank selection replaces rather than adds to prior selection");
+Check(PreviewPolicy.CenterStart(100,30,0,1048576)==85,"row centered in viewport");
+Check(PreviewPolicy.CenterStart(7,15,0,16384)==1,"keep leading columns when target fits");
+Check(PreviewPolicy.CenterStart(100,20,3,1048576)==90,"frozen pane scroll must exclude frozen rows");
+Check(PreviewPolicy.CenterStart(2,20,3,1048576)==4,"target in frozen region must not scroll behind split");
+var outlineStamp=PreviewPolicy.OutlineSignature(s);s.OutlineLevels[2]=1;
+Check(outlineStamp!=PreviewPolicy.OutlineSignature(s),"modeless preview must detect outline edits before submit");
+Console.WriteLine("PASS: "+checks+" preview policy checks");

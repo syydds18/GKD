@@ -1,0 +1,14 @@
+# Build outputs
+bin/
+obj/
+dist/
+
+# Local IDE and OS files
+.vs/
+.vscode/
+.idea/
+.DS_Store
+
+# Local test/runtime artifacts
+*.user
+*.suo

@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net8.0</TargetFramework><OutputType>Exe</OutputType><EnableDefaultCompileItems>false</EnableDefaultCompileItems><Nullable>disable</Nullable></PropertyGroup>
+  <ItemGroup><Compile Include="Program.cs"/><Compile Include="DiscoveryTests.cs"/><Compile Include="../ExcelPathCandidates.cs" Link="ExcelPathCandidates.cs"/><Compile Include="../ExcelProcessScope.cs" Link="ExcelProcessScope.cs"/><Compile Include="../InstallState.cs" Link="InstallState.cs"/><Compile Include="../RegistrationLogic.cs" Link="RegistrationLogic.cs"/><Compile Include="../CoreUtil.cs" Link="CoreUtil.cs" Condition="Exists('../CoreUtil.cs')"/></ItemGroup>
+</Project>
