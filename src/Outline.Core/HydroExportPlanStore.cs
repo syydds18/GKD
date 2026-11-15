@@ -32,9 +32,39 @@ namespace Outline.Core
             var current = currentSelection == null ? null : currentSelection.ToList();
             if (current != null && current.Count > 0)
                 return current.Any(x => string.Equals(x, sheetName, StringComparison.OrdinalIgnoreCase));
-            if (savedPlan != null && savedPlan.Sheets.Count > 0)
-                return savedPlan.Sheets.Any(x => string.Equals(x.Name, sheetName, StringComparison.OrdinalIgnoreCase));
             return recommended;
+        }
+
+        // Only an explicit load uses saved ranges. No matches means the caller must
+        // leave its current choices untouched (for example after sheets were renamed).
+        public static List<HydroExportPlanSheet> MatchVisibleRanges(HydroExportPlan savedPlan,
+            IEnumerable<string> visibleSheetNames)
+        {
+            var matches = new List<HydroExportPlanSheet>();
+            if (savedPlan == null || visibleSheetNames == null) return matches;
+            foreach (string name in visibleSheetNames.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var saved = savedPlan.Sheets.FirstOrDefault(x => x != null &&
+                    string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase) && ValidRangeForSheet(x.PrintRange, name));
+                if (saved != null) matches.Add(new HydroExportPlanSheet { Name = name, PrintRange = saved.PrintRange });
+            }
+            return matches;
+        }
+
+        private static bool ValidRangeForSheet(string address, string sheetName)
+        {
+            if (string.IsNullOrWhiteSpace(address)) return false;
+            string value = address.Trim().TrimStart('=');
+            int bang = value.LastIndexOf('!');
+            if (bang >= 0)
+            {
+                string qualifier = value.Substring(0, bang).Trim();
+                if (qualifier.Length >= 2 && qualifier.StartsWith("'", StringComparison.Ordinal) && qualifier.EndsWith("'", StringComparison.Ordinal))
+                    qualifier = qualifier.Substring(1, qualifier.Length - 2).Replace("''", "'");
+                if (!string.Equals(qualifier, sheetName, StringComparison.OrdinalIgnoreCase)) return false;
+            }
+            try { return HydroRangeAddress.IsValid(address); }
+            catch (OverflowException) { return false; }
         }
     }
 
@@ -61,6 +91,8 @@ namespace Outline.Core
             try
             {
                 var document = XDocument.Load(path);
+                if (document.Root == null || document.Root.Name != "HydroExportPlan" ||
+                    (string)document.Root.Attribute("version") != "1") return null;
                 var plan = new HydroExportPlan();
                 foreach (var element in document.Root.Elements("Sheet"))
                 {

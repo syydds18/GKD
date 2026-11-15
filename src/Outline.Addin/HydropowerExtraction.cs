@@ -26,34 +26,41 @@ namespace Outline.Addin
 
     internal sealed class HydropowerRangeForm : Form
     {
-            private readonly DataGridView grid;
-            private readonly BindingList<HydroSheetChoice> rows;
+        private readonly DataGridView grid;
+        private readonly BindingList<HydroSheetChoice> rows;
+        private readonly List<HydroSheetChoice> workbookRows;
         private readonly string workbookPath;
         private readonly HydroExportPlanStore planStore = HydroExportPlanStore.ForLocalApplicationData();
-        internal List<HydroSheetChoice> Selected { get { return rows.Where(x => x.Include).ToList(); } }
+        internal List<HydroSheetChoice> Selected { get { return workbookRows.Where(x => x.Include && x.IsVisible).ToList(); } }
         internal HydroSheetChoice RangePickRequested { get; private set; }
 
         internal HydropowerRangeForm(List<HydroSheetChoice> sheets, string workbookPath)
         {
-            rows = new BindingList<HydroSheetChoice>(sheets);
+            workbookRows = sheets.ToList();
+            rows = new BindingList<HydroSheetChoice>(sheets.OrderByDescending(x => x.Include).ToList());
             this.workbookPath = workbookPath;
             Ui.Base(this, new System.Drawing.Size(900, 620), "水电工程 — 选择工作表与打印范围");
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 128));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 160));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
             var header = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
-            header.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
-            header.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-            header.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+            header.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+            header.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
+            header.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+            var planActions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
             var savePlan = Ui.Button("保存为下次默认", true);
             savePlan.Click += (s, e) => SaveDefaultPlan();
-            header.Controls.Add(savePlan, 0, 0);
+            var loadPlan = Ui.Button("加载上次导表范围");
+            loadPlan.Click += (s, e) => LoadDefaultPlan();
+            planActions.Controls.Add(savePlan); planActions.Controls.Add(loadPlan);
+            header.Controls.Add(planActions, 0, 0);
             header.Controls.Add(new Label
             {
                 Dock = DockStyle.Fill,
-                Text = "提示：打开插件前，请先在 Excel 中预选需要导出的工作表。绿色为推荐报表；可编辑或框选范围。",
+                Text = "使用提项目功能前，建议提前设置分页预览范围，并选择(可多选)需要导出的工作表范围。",
                 AutoSize = false,
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
                 ForeColor = System.Drawing.Color.FromArgb(96, 107, 118)
             }, 0, 1);
             var actions = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
@@ -131,6 +138,48 @@ namespace Outline.Addin
             grid.Refresh();
         }
 
+        private void LoadDefaultPlan()
+        {
+            grid.EndEdit();
+            try
+            {
+                var plan = planStore.Load(workbookPath);
+                if (plan == null || plan.Sheets.Count == 0)
+                {
+                    MessageBox.Show(this, "没有找到可用的上次导表方案（可能尚未保存、文件损坏或版本不兼容）。当前选择和范围未改变。", "水电工程");
+                    return;
+                }
+                var matches = HydroExportPlanPolicy.MatchVisibleRanges(plan,
+                    workbookRows.Where(x => x.IsVisible).Select(x => x.SheetName));
+                if (matches.Count == 0)
+                {
+                    MessageBox.Show(this, "上次方案没有匹配到当前可见工作表的有效范围；工作表可能已改名、删除或隐藏，或范围已失效。当前选择和范围未改变。", "水电工程");
+                    return;
+                }
+                var byName = matches.ToDictionary(x => x.Name, StringComparer.OrdinalIgnoreCase);
+                foreach (var row in workbookRows)
+                {
+                    HydroExportPlanSheet saved;
+                    bool matched = row.IsVisible && byName.TryGetValue(row.SheetName, out saved);
+                    row.Include = matched;
+                    if (matched) row.PrintRange = byName[row.SheetName].PrintRange;
+                }
+                // Reorder once after an explicit action; avoid moving a row while a
+                // checkbox or range cell is being edited.
+                rows.RaiseListChangedEvents = false;
+                try
+                {
+                    rows.Clear();
+                    foreach (var row in workbookRows.OrderByDescending(x => x.Include)) rows.Add(row);
+                }
+                finally { rows.RaiseListChangedEvents = true; rows.ResetBindings(); }
+                int skipped = plan.Sheets.Count - matches.Count;
+                MessageBox.Show(this, "已加载 " + matches.Count + " 张工作表的上次导表范围。" +
+                    (skipped > 0 ? "已跳过 " + skipped + " 项未匹配、隐藏、重复或范围无效的记录。" : ""), "水电工程");
+            }
+            catch (Exception ex) { MessageBox.Show(this, "加载上次导表范围失败：" + ex.Message, "水电工程"); }
+        }
+
         private void SaveDefaultPlan()
         {
             grid.EndEdit();
@@ -151,7 +200,7 @@ namespace Outline.Addin
             try
             {
                 planStore.Save(workbookPath, selected.Select(x => new HydroExportPlanSheet { Name = x.SheetName, PrintRange = x.PrintRange }));
-                MessageBox.Show(this, "已保存下次默认工作表和打印范围。", "水电工程");
+                MessageBox.Show(this, "已保存工作表和打印范围；下次可点击“加载上次导表范围”恢复。", "水电工程");
             }
             catch (Exception ex) { MessageBox.Show(this, "保存默认方案失败：" + ex.Message, "水电工程"); }
         }
@@ -197,18 +246,14 @@ namespace Outline.Addin
             }
             var recommended = HydroReportRecommender.Recommend(names);
             var currentSelection = ReadSelectedSheetNames(app, workbook);
-            HydroExportPlan savedPlan = null;
-            try { savedPlan = HydroExportPlanStore.ForLocalApplicationData().Load(workbookPath); } catch { }
             for (int index = 0; index < sheets.Count; index++)
             {
                 dynamic sheet = sheets[index];
-                string address = HydroLivePrintArea.Read(ExcelBridge.App, sheet);
+                string address = HydroLivePrintArea.Read(app, sheet);
                 bool visible = Convert.ToInt32(sheet.Visible, CultureInfo.InvariantCulture) == -1;
                 string name = names[index];
                 bool isRecommended = recommended.Contains(name);
-                string savedRange = savedPlan == null ? null : savedPlan.Sheets.FirstOrDefault(x => string.Equals(x.Name, name, StringComparison.OrdinalIgnoreCase))?.PrintRange;
-                if (!string.IsNullOrWhiteSpace(savedRange) && HydroRangeAddress.IsValid(savedRange)) address = savedRange;
-                bool include = HydroExportPlanPolicy.ShouldInclude(name, isRecommended, currentSelection, savedPlan);
+                bool include = HydroExportPlanPolicy.ShouldInclude(name, isRecommended, currentSelection, null);
                 result.Add(new HydroSheetChoice { SourceSheet = (object)sheet, Include = visible && include, IsVisible = visible, IsRecommended = isRecommended, SheetName = name, PrintRange = address });
             }
             return result;
@@ -242,6 +287,8 @@ namespace Outline.Addin
 
         internal static string Run(dynamic app, dynamic sourceWorkbook, string sourcePath, List<HydroSheetChoice> selected, string exportWorkbookName, HydroProgressForm progress)
         {
+            using (var selectionScope = new HydroSheetSelectionScope((object)app, (object)sourceWorkbook))
+            {
             foreach (var choice in selected)
             {
                 dynamic source = choice.SourceSheet;
@@ -256,6 +303,8 @@ namespace Outline.Addin
             string placeholderName = Convert.ToString(result.Worksheets[1].Name, CultureInfo.InvariantCulture);
             try
             {
+                using (var printBatch = new HydroPrintCommunicationScope((object)app))
+                {
                 for (int index = 0; index < selected.Count; index++)
                 {
                     var choice = selected[index];
@@ -266,10 +315,13 @@ namespace Outline.Addin
                     dynamic target = result.Worksheets.Add(Type.Missing, result.Worksheets[result.Worksheets.Count]);
                     target.Name = SafeSheetName(choice.SheetName, result);
                     dynamic dest = target.Range["A1"].Resize[sourceRange.Rows.Count, sourceRange.Columns.Count];
+                    selectionScope.SelectOnly((object)source);
                     HydroRangeCopy.CopyValuesAndFormats((object)sourceRange, (object)dest);
                     try { app.CutCopyMode = false; } catch { }
                     DeleteComments(target, dest);
                     FormatRange(target, dest);
+                    HydroExportAppearance.ClearFills((object)target);
+                    HydroOutlineTransfer.Copy((object)sourceRange, (object)target);
                     target.PageSetup.PrintArea = dest.Address;
                     target.PageSetup.Zoom = false;
                     target.PageSetup.FitToPagesWide = 1;
@@ -283,6 +335,7 @@ namespace Outline.Addin
                     try { target.PageSetup.PrintTitleRows = sourcePage.PrintTitleRows; } catch { }
                     try { target.PageSetup.PrintTitleColumns = sourcePage.PrintTitleColumns; } catch { }
                 }
+                } // Commit queued printer settings before SaveAs.
                 for (int i = result.Worksheets.Count; i >= 1; i--)
                 {
                     dynamic sheet = result.Worksheets[i];
@@ -291,7 +344,6 @@ namespace Outline.Addin
             try { result.RemovePersonalInformation = true; } catch { }
                 BreakExternalLinks(result);
                 result.SaveAs(output, 51);
-                result.Save();
                 result.Close(false);
                 result = null;
                 return output;
@@ -301,6 +353,7 @@ namespace Outline.Addin
                 if (result != null) try { result.Close(false); } catch { }
                 if (File.Exists(output)) try { File.Delete(output); } catch { }
                 throw;
+            }
             }
         }
 

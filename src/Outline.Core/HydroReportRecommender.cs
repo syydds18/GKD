@@ -11,27 +11,12 @@ namespace Outline.Core
 
         public static HashSet<string> Recommend(IEnumerable<string> names)
         {
-            var sheets = (names ?? Enumerable.Empty<string>())
-                .Select((name, index) => new Entry(name ?? "", Normalize(name), index)).ToList();
             var result = new HashSet<string>(StringComparer.Ordinal);
-
-            foreach (var sheet in sheets)
-                if (IsCodeReport(sheet.Normalized) || PhaseFor(sheet.Normalized).Length != 0) result.Add(sheet.Name);
-
-            for (int start = 0; start < sheets.Count; start++)
+            foreach (string name in names ?? Enumerable.Empty<string>())
             {
-                string phase = PhaseFor(sheets[start].Normalized);
-                if (phase.Length == 0) continue;
-
-                int nextStart = sheets.Count;
-                for (int i = start + 1; i < sheets.Count; i++)
-                    if (PhaseFor(sheets[i].Normalized).Length != 0) { nextStart = i; break; }
-
-                int end = -1;
-                for (int i = start + 1; i < nextStart; i++)
-                    if (IsEnd(sheets[i].Normalized, phase)) { end = i; break; }
-                if (end < 0) continue;
-                for (int i = start; i <= end; i++) result.Add(sheets[i].Name);
+                string n = Normalize(name);
+                if (Excluded(n)) continue;
+                if (IsCodeReport(n) || PhaseFor(n).Length != 0) result.Add(name ?? "");
             }
             return result;
         }
@@ -50,9 +35,20 @@ namespace Outline.Core
             int offset = 0;
             while (offset < n.Length && char.IsDigit(n[offset])) offset++;
             string codeName = n.Substring(offset);
-            if (HasCodePrefix(codeName, "ZGS") || HasCodePrefix(codeName, "SN")) return true;
+            if (HasCodePrefix(codeName, "ZGS") || HasCodePrefix(codeName, "SN") || HasCodePrefix(codeName, "ZS")) return true;
             for (int i = 1; i <= 6; i++) if (HasCodePrefix(codeName, "G" + i)) return true;
-            return n.Contains("独立") || n.Contains("分年度") || n.Contains("资金流");
+            // Named report families only: a generic 概算/估算/匡算 title may be
+            // a detail worksheet and is not sufficient on its own.
+            return n.Contains("独立") || n.Contains("枢纽") || n.Contains("建设征地") || n.Contains("移民安置") ||
+                n.Contains("补偿费用估算") || n.Contains("补偿费用概算") || n.Contains("补偿费用匡算");
+        }
+
+        private static bool Excluded(string n)
+        {
+            int offset = 0;
+            while (offset < n.Length && char.IsDigit(n[offset])) offset++;
+            return n.Substring(offset).StartsWith("FJ", StringComparison.Ordinal) ||
+                n.Contains("资金流") || n.Contains("分年");
         }
 
         private static bool HasCodePrefix(string value, string code)
@@ -66,20 +62,6 @@ namespace Outline.Core
             foreach (string phase in PhaseStarts)
                 if (n.Contains(phase)) return phase.Substring(1);
             return "";
-        }
-
-        private static bool IsEnd(string n, string phase)
-        {
-            if (phase == "概算") return n.Contains("资金流概算");
-            if (phase == "估算") return n.Contains("资金流估算");
-            return n.Contains("分年度匡算");
-        }
-
-        private sealed class Entry
-        {
-            internal readonly string Name, Normalized;
-            internal readonly int Index;
-            internal Entry(string name, string normalized, int index) { Name = name; Normalized = normalized; Index = index; }
         }
     }
 }

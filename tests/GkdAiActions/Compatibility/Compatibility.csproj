@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net48</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><DefineConstants>COMPATIBILITY</DefineConstants></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../src/Outline.Addin/GkdAiActions.cs" Link="GkdAiActions.cs" />
+    <Compile Include="CompatibilityContracts.cs" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="ExcelDna.Integration" Version="1.9.0" />
+    <Reference Include="System.Windows.Forms" /><Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+</Project>

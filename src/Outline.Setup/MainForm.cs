@@ -34,7 +34,7 @@ namespace Outline.Setup
             for (int i = 0; i < 9; i++) layout.RowStyles.Add(new RowStyle(i == 7 ? SizeType.Percent : SizeType.AutoSize, i == 7 ? 100 : 0));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             layout.Controls.Add(new Label { Text = "搞快点", Font = new Font(Font.FontFamily, 19, FontStyle.Bold), AutoSize = true, Margin = new Padding(0, 0, 0, 6) }, 0, 0);
-            layout.Controls.Add(new Label { Text = "原生 Excel 加载项  /  v1.4.0  /  仅当前 Windows 用户，无需管理员", AutoSize = true, ForeColor = Color.FromArgb(95, 103, 98), Margin = new Padding(0, 0, 0, 12) }, 0, 1);
+            layout.Controls.Add(new Label { Text = "原生 Excel 加载项  /  v1.6.0  /  仅当前 Windows 用户，无需管理员", AutoSize = true, ForeColor = Color.FromArgb(95, 103, 98), Margin = new Padding(0, 0, 0, 12) }, 0, 1);
             layout.Controls.Add(state, 0, 2);
             var detection = new TableLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 3, Margin = new Padding(0, 0, 0, 12) };
             detection.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); detection.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -137,7 +137,7 @@ namespace Outline.Setup
                     var saved = StateFile.Load(Installer.StatePath);
                     state.Text = (saved.Complete ? "已安装" : "安装未完成，可卸载恢复") + "  ·  Excel " + saved.OfficeVersion + "  ·  " + saved.Architecture;
                 }
-                else state.Text = "尚未安装 · v1.4.0";
+                else state.Text = "尚未安装 · v1.6.0";
             }
             catch (Exception ex) { state.Text = "安装记录无法读取，请保留目录并联系维护人员"; Append(ex.Message); }
             install.Enabled = !exists && Directory.Exists(Installer.PayloadRoot);

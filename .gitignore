@@ -12,3 +12,16 @@ dist/
 # Local test/runtime artifacts
 *.user
 *.suo
+
+# Private test packages, credentials and generated regression output
+/tests/test-release/
+*.key
+.env
+.env.*
+*CONFIDENTIAL*
+
+# Local development/acceptance notes (not release documentation)
+/docs/plans/
+/docs/*验收.md
+/docs/*对照与改动.md
+/tests/*验收.md

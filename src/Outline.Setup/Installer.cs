@@ -14,7 +14,7 @@ namespace Outline.Setup
         internal static string InstallRoot { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ExcelOutlineAddin", "1.0"); } }
         internal static string StatePath { get { return Path.Combine(InstallRoot, "install-state.xml"); } }
         internal static string PayloadRoot { get { return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "payload"); } }
-        internal static readonly string[] RequiredFiles = { "Outline.xll", "Outline.dna", "Outline.Addin.dll", "Outline.Core.dll", "ExcelDna.Integration.dll" };
+        internal static readonly string[] RequiredFiles = { "Outline.xll", "Outline.dna", "Outline.Addin.dll", "Outline.Core.dll", "ExcelDna.Integration.dll", "Newtonsoft.Json.dll" };
         private static string UninstallCommand { get { return "\"" + Path.Combine(InstallRoot, "Outline.Setup.exe") + "\" /uninstall"; } }
         private static RegistryView UninstallView { get { return Environment.Is64BitOperatingSystem ? RegistryView.Registry64 : RegistryView.Registry32; } }
 
@@ -48,6 +48,8 @@ namespace Outline.Setup
                 using (var stream = File.OpenRead(sources[architecture + "/Outline.xll"]))
                     if (CoreUtil.ReadPeArchitecture(stream) != architecture) throw new InvalidDataException(architecture + " 目录的 XLL 位数不匹配。");
             }
+            string workflowKey = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "gkd-workflow.key");
+            if (File.Exists(workflowKey)) sources.Add("gkd-workflow.key", workflowKey);
             sources.Add("Outline.Setup.exe", Application.ExecutablePath);
             if (File.Exists(Application.ExecutablePath + ".config")) sources.Add("Outline.Setup.exe.config", Application.ExecutablePath + ".config");
             RejectReparse(InstallRoot);
@@ -124,7 +126,7 @@ namespace Outline.Setup
                 throw new InvalidDataException("安装状态无效；为避免误删，已停止卸载。");
             var allowed = new HashSet<string>(StringComparer.Ordinal);
             foreach (string a in new[] { "x86", "x64" }) foreach (string f in RequiredFiles) allowed.Add(a + "/" + f);
-            allowed.Add("Outline.Setup.exe"); allowed.Add("Outline.Setup.exe.config");
+            allowed.Add("Outline.Setup.exe"); allowed.Add("Outline.Setup.exe.config"); allowed.Add("gkd-test-workflow.key"); allowed.Add("gkd-workflow.key");
             foreach (string file in state.Files)
                 if (!allowed.Contains(CoreUtil.CheckedRelativePath(file))) throw new InvalidDataException("状态文件包含未知文件，已停止卸载。");
             foreach (var r in state.Registrations)
@@ -158,8 +160,8 @@ namespace Outline.Setup
                 using (var key = root.CreateSubKey(ProductKey))
                 {
                     key.SetValue("DisplayName", "搞快点", RegistryValueKind.String);
-                    key.SetValue("DisplayVersion", "1.4.0", RegistryValueKind.String);
-                    key.SetValue("Publisher", "搞快点", RegistryValueKind.String);
+                    key.SetValue("DisplayVersion", "1.6.0", RegistryValueKind.String);
+                    key.SetValue("Publisher", "不会开花的草", RegistryValueKind.String);
                     key.SetValue("InstallLocation", InstallRoot, RegistryValueKind.String);
                     key.SetValue("DisplayIcon", Path.Combine(InstallRoot, "Outline.Setup.exe"), RegistryValueKind.String);
                     key.SetValue("UninstallString", state.UninstallCommand, RegistryValueKind.String);

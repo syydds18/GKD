@@ -21,7 +21,6 @@ namespace Outline.Addin
                 dynamic to = target.Cells[block.SourceRow, block.SourceColumn].Resize[block.Rows, block.Columns];
                 from.Copy();
                 to.PasteSpecial(-4122, Type.Missing, Type.Missing, Type.Missing); // xlPasteFormats, with no merges in the block
-                from.Copy();
                 to.PasteSpecial(-4163, Type.Missing, Type.Missing, Type.Missing); // xlPasteValues preserves errors
             }
 
@@ -32,7 +31,6 @@ namespace Outline.Addin
                 // Exactly one matching merge at a time: never paste a heterogeneous merge grid.
                 fromArea.Copy();
                 toArea.PasteSpecial(-4122, Type.Missing, Type.Missing, Type.Missing);
-                fromArea.Copy();
                 toArea.PasteSpecial(-4163, Type.Missing, Type.Missing, Type.Missing);
             }
             dynamic sourceColumns = source.Parent.Cells[Convert.ToInt32(source.Row), Convert.ToInt32(source.Column)].Resize[rows, columns];
@@ -81,49 +79,27 @@ namespace Outline.Addin
         internal static List<CopyBlock> PlanUnmergedBlocks(int rows, int columns, IList<MergeArea> merges)
         {
             var result = new List<CopyBlock>();
-            int row = 1;
-            while (row <= rows)
+            var boundaries = new SortedSet<int> { 1, rows + 1 };
+            foreach (var merge in merges)
             {
-                bool mergeRow = false;
-                foreach (MergeArea merge in merges)
-                    if (row >= merge.Row && row < merge.Row + merge.Rows) { mergeRow = true; break; }
-                if (!mergeRow)
-                {
-                    int end = row;
-                    while (end < rows)
-                    {
-                        bool nextMerged = false;
-                        foreach (MergeArea merge in merges)
-                            if (end + 1 >= merge.Row && end + 1 < merge.Row + merge.Rows) { nextMerged = true; break; }
-                        if (nextMerged) break;
-                        end++;
-                    }
-                    result.Add(new CopyBlock(row, 1, end - row + 1, columns));
-                    row = end + 1;
-                    continue;
-                }
-
+                boundaries.Add(merge.Row);
+                boundaries.Add(merge.Row + merge.Rows);
+            }
+            var starts = new List<int>(boundaries);
+            for (int i = 0; i + 1 < starts.Count; i++)
+            {
+                int row = starts[i], height = starts[i + 1] - row;
+                var active = new List<MergeArea>();
+                foreach (var merge in merges)
+                    if (row >= merge.Row && row < merge.Row + merge.Rows) active.Add(merge);
+                active.Sort((a, b) => a.Column.CompareTo(b.Column));
                 int column = 1;
-                while (column <= columns)
+                foreach (var merge in active)
                 {
-                    int nextMergeStart = columns + 1;
-                    foreach (MergeArea merge in merges)
-                    {
-                        if (row < merge.Row || row >= merge.Row + merge.Rows) continue;
-                        if (column >= merge.Column && column < merge.Column + merge.Columns)
-                        {
-                            column = merge.Column + merge.Columns;
-                            nextMergeStart = -1;
-                            break;
-                        }
-                        if (merge.Column > column) nextMergeStart = Math.Min(nextMergeStart, merge.Column);
-                    }
-                    if (nextMergeStart == -1) continue;
-                    int end = Math.Min(columns, nextMergeStart - 1);
-                    result.Add(new CopyBlock(row, column, 1, end - column + 1));
-                    column = end + 1;
+                    if (merge.Column > column) result.Add(new CopyBlock(row, column, height, merge.Column - column));
+                    column = Math.Max(column, merge.Column + merge.Columns);
                 }
-                row++;
+                if (column <= columns) result.Add(new CopyBlock(row, column, height, columns - column + 1));
             }
             return result;
         }

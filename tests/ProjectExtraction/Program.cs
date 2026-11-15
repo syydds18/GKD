@@ -10,15 +10,18 @@ static class Program
         {
             var plan = ProjectExtraction.Plan(ProjectType.Hydropower, 1, 1048576, 16384);
             var recommended = HydroReportRecommender.Recommend(new[] { "封面", "ZGS总概算", "SN独立", "G1", "G2", "G3", "G4", "G5", "G6", "分年度概算", "资金流概算表", "附表" });
-            Check(recommended.SetEquals(new[] { "ZGS总概算", "SN独立", "G1", "G2", "G3", "G4", "G5", "G6", "分年度概算", "资金流概算表" }), "recommend feasibility estimate reports");
-            Check(HydroReportRecommender.Recommend(new[] { "总估算", "甲表", "资金流估算表" }).SetEquals(new[] { "总估算", "甲表", "资金流估算表" }), "recommend pre-feasibility estimate reports");
-            Check(HydroReportRecommender.Recommend(new[] { "总匡算", "甲表", "分年度匡算表" }).SetEquals(new[] { "总匡算", "甲表", "分年度匡算表" }), "recommend preliminary budget reports");
-            Check(HydroReportRecommender.Recommend(new[] { "封面", "总概算", "资金流概算表", "备注" }).SetEquals(new[] { "总概算", "资金流概算表" }), "keep items outside phase range unselected");
-            Check(HydroReportRecommender.Recommend(new[] { "ZGS", "SN", "G1", "G2", "G3", "G4", "G5", "G6", "独立", "分年度", "资金流" }).Count == 11, "recommend standalone hydro report names");
+            Check(recommended.SetEquals(new[] { "ZGS总概算", "SN独立", "G1", "G2", "G3", "G4", "G5", "G6" }), "recommend report families but exclude annual/cash-flow reports");
+            Check(HydroReportRecommender.Recommend(new[] { "总估算", "甲表", "资金流估算表" }).SetEquals(new[] { "总估算" }), "do not select arbitrary sheets between estimate endpoints");
+            Check(HydroReportRecommender.Recommend(new[] { "总匡算", "甲表", "分年度匡算表" }).SetEquals(new[] { "总匡算" }), "do not select arbitrary preliminary-budget details");
+            Check(HydroReportRecommender.Recommend(new[] { "封面", "总概算", "资金流概算表", "备注" }).SetEquals(new[] { "总概算" }), "exclude cash-flow report after total report");
+            Check(HydroReportRecommender.Recommend(new[] { "ZGS", "SN", "G1", "G2", "G3", "G4", "G5", "G6", "独立", "分年度", "资金流" }).SetEquals(new[] { "ZGS", "SN", "G1", "G2", "G3", "G4", "G5", "G6", "独立" }), "recommend standalone core hydro report names");
             Check(HydroReportRecommender.Recommend(new[] { "01-G1报告", "G10", "G100", "G11", "前言" }).SetEquals(new[] { "01-G1报告" }), "handle numeric sheet prefixes without matching G10-family names");
-            Check(HydroReportRecommender.Recommend(new[] { "总估算", "无关说明", "资金流概算表", "封面", "总匡算", "甲表", "分年度匡算表" }).SetEquals(new[] { "总估算", "资金流概算表", "总匡算", "甲表", "分年度匡算表" }), "only match matching phase endpoint and valid spans");
+            Check(HydroReportRecommender.Recommend(new[] { "总估算", "无关说明", "资金流概算表", "封面", "总匡算", "甲表", "分年度匡算表" }).SetEquals(new[] { "总估算", "总匡算" }), "phase totals do not select adjacent detail sheets");
             Check(HydroReportRecommender.Recommend(new[] { "SN", "无关说明", "ZGS", "G10", "附录" }).SetEquals(new[] { "SN", "ZGS" }), "code reports remain recommended without phase endpoints");
-            Check(HydroReportRecommender.Recommend(new[] { "前言", "总估算-项目", "甲表", "资金流估算表-汇总", "总概算（调整）", "乙表", "资金流概算表" }).SetEquals(new[] { "总估算-项目", "甲表", "资金流估算表-汇总", "总概算（调整）", "乙表", "资金流概算表" }), "recognize punctuated phase starts and multiple spans");
+            Check(HydroReportRecommender.Recommend(new[] { "前言", "总估算-项目", "甲表", "资金流估算表-汇总", "总概算（调整）", "乙表", "资金流概算表" }).SetEquals(new[] { "总估算-项目", "总概算（调整）" }), "recognize punctuated phase total reports conservatively");
+            Check(HydroReportRecommender.Recommend(new[] { "枢纽工程概算表", "ZS", "02-ZS枢纽估算表", "建设征地补偿费用概算表", "移民安置补偿费用估算表", "补偿费用匡算表", "建设征地和移民安置" }).SetEquals(new[] { "枢纽工程概算表", "ZS", "02-ZS枢纽估算表", "建设征地补偿费用概算表", "移民安置补偿费用估算表", "补偿费用匡算表", "建设征地和移民安置" }), "recommend hub/ZS and G6 compensation aliases");
+            Check(HydroReportRecommender.Recommend(new[] { "补偿费用估算", "补偿费用概算", "补偿费用匡算表" }).SetEquals(new[] { "补偿费用估算", "补偿费用概算", "补偿费用匡算表" }), "compensation phase aliases allow omitted table suffix");
+            Check(HydroReportRecommender.Recommend(new[] { "FJ总概算", "02-FJ-G6建设征地", "fj独立费用", "ZS资金流概算", "G1分年表", "建设征地分年度概算表", "总概算", "建筑明细概算表", "设备安装概算表", "补偿费用明细表", "ZS10", "G60" }).SetEquals(new[] { "总概算" }), "exclusions win over aliases and generic detail tables stay unselected");
             Check(HydroExportPolicy.FileStem(new DateTime(2026, 11, 14), "报表/资金流:概算?*") == "20261114 报表资金流概算-提项目", "sanitize hydropower export file stem");
             Check(HydroExportPolicy.FileStem(new DateTime(2026, 1, 2), " /:*?\"<>| ") == "20260102 水电工程-提项目", "fallback when sanitized sheet name is empty");
             Check(HydroExportPolicy.IsTitleRow(new[] { "某某工程总概算" }, 0), "recognize first-row project report title");

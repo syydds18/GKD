@@ -16,6 +16,7 @@ static class Program
         Check(!text.Contains("dest.Value2 = dest.Value2;"), "COM error Variants are not reassigned as numeric values");
         Check(!text.Contains("for (int r = 1; r <= (int)sourceRange.Rows.Count; r++)"), "source row heights are not copied one COM call at a time");
         Check(text.Contains("range.Rows.AutoFit();"), "row heights are auto-fitted in a single Excel operation");
+        if (!text.Contains("HydroExportAppearance.ClearFills((object)target);")) throw new Exception("all exported cells including conditional fill must be cleared");
         string runner = File.ReadAllText(Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../../../../../src/Outline.Addin/ProjectExtractionRunner.cs")));
         Check(runner.Contains("Path.GetFileNameWithoutExtension(sourcePath)"), "export name uses the workbook filename");
         Check(runner.Contains("exportWorkbookName, progress"), "export uses captured workbook filename");

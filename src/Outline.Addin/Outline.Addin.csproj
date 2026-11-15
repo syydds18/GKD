@@ -2,14 +2,20 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework><LangVersion>7.3</LangVersion>
     <AssemblyName>Outline.Addin</AssemblyName><RootNamespace>Outline.Addin</RootNamespace>
-    <GenerateAssemblyInfo>true</GenerateAssemblyInfo><Version>1.4.0</Version>
-    <Company>搞快点</Company><Product>搞快点</Product><Title>搞快点</Title>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo><Version>1.6.0</Version>
+    <Company>不会开花的草</Company><Product>搞快点</Product><Title>搞快点</Title>
     <Description>原生 Excel 智能分级、智能求和、求和校验及水电提项目工具</Description>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all" />
     <PackageReference Include="ExcelDna.Integration" Version="1.9.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <Compile Remove="AiWorkflow*.cs" />
+    <EmbeddedResource Include="Resources/custom-formula.png" LogicalName="Outline.Addin.Resources.custom-formula.png" />
+    <EmbeddedResource Include="Resources/ai-assistant.png" LogicalName="Outline.Addin.Resources.ai-assistant.png" />
+    <Reference Include="System.Security" />
+    <Reference Include="System.Net.Http" />
     <ProjectReference Include="../Outline.Core/Outline.Core.csproj" />
-    <Reference Include="System.Windows.Forms" /><Reference Include="System.Drawing" /><Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Windows.Forms" /><Reference Include="System.Drawing" /><Reference Include="Microsoft.CSharp" /><Reference Include="System.Web.Extensions" />
   </ItemGroup>
 </Project>

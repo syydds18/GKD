@@ -16,10 +16,8 @@ static class Program
         var expected = new[]
         {
             new HydroRangeCopy.CopyBlock(1, 1, 1, 5),
-            new HydroRangeCopy.CopyBlock(2, 1, 1, 1),
-            new HydroRangeCopy.CopyBlock(2, 5, 1, 1),
-            new HydroRangeCopy.CopyBlock(3, 1, 1, 1),
-            new HydroRangeCopy.CopyBlock(3, 5, 1, 1),
+            new HydroRangeCopy.CopyBlock(2, 1, 2, 1),
+            new HydroRangeCopy.CopyBlock(2, 5, 2, 1),
             new HydroRangeCopy.CopyBlock(4, 3, 1, 3)
         };
         if (!blocks.SequenceEqual(expected)) throw new Exception("unexpected merge-safe blocks: " + string.Join(";", blocks));
@@ -29,6 +27,8 @@ static class Program
         var dialog = File.ReadAllText(Path.Combine(root, "src/Outline.Addin/HydroExportDialogs.cs"));
         if (!dialog.Contains("footer.Controls.Add(ok);") || !dialog.Contains("footer.Controls.Add(openFile);")) throw new Exception("open-file must be added without removing OK");
         if (!dialog.Contains("Clipboard.SetDataObject(data, true, 10, 100)") || !dialog.Contains("ApartmentState.STA")) throw new Exception("file clipboard must persist and retry on an STA thread");
+        var tall = HydroRangeCopy.PlanUnmergedBlocks(10000, 5, new[]{new HydroRangeCopy.MergeArea(1,2,10000,3)});
+        if (tall.Count != 2 || tall.Any(x=>x.Rows!=10000)) throw new Exception("adjacent free columns around a tall merge must be copied in two bands, not per row");
         TestTransfer();
         Console.WriteLine("PASS merge-aware planner/transfer and dialog contracts");
         return 0;
@@ -42,11 +42,14 @@ static class Program
         source.Values[5, 4] = "#DIV/0!";
         source.Values[6, 5] = 42.0;
         source.Values[6, 4] = "=literal text, not a formula";
+        FakeRange.CopyCalls = 0;
         var target = new FakeSheet(4, 5);
         HydroRangeCopy.CopyValuesAndFormats(new FakeRange(source, new Box(5, 4, 4, 5)), new FakeRange(target, new Box(1, 1, 4, 5)));
         if (!Equals(target.Values[1, 1], "#DIV/0!") || !Equals(target.Values[2, 2], 42.0) || !Equals(target.Values[2, 1], "=literal text, not a formula")) throw new Exception("value transfer changed anchors, errors, or text");
         if (source.Merges.Count != 2 || target.Merges.Count != 2 || !target.WidthsCopied) throw new Exception("merge/width topology lost");
         if (!target.Merges.Contains(new Box(1, 1, 1, 5)) || !target.Merges.Contains(new Box(2, 2, 2, 2))) throw new Exception("merge offsets incorrect");
+        var plan=HydroRangeCopy.PlanUnmergedBlocks(4,5,new[]{new HydroRangeCopy.MergeArea(1,1,1,5),new HydroRangeCopy.MergeArea(2,2,2,2)});
+        if (FakeRange.CopyCalls != plan.Count + 3) throw new Exception("copy once per block/merge, reuse clipboard for format and value paste");
         try
         {
             HydroRangeCopy.CopyValuesAndFormats(new FakeRange(source, new Box(5, 5, 4, 4)), new FakeRange(new FakeSheet(4, 4), new Box(1, 1, 4, 4)));
@@ -120,7 +123,8 @@ public sealed class FakeRange
             return this;
         }
     }
-    public void Copy() { clipboard=this; }
+    public static int CopyCalls;
+    public void Copy() { CopyCalls++; clipboard=this; }
     public void UnMerge() { Parent.Merges.Clear(); }
     public void Merge() { if (!Parent.Merges.Contains(box)) Parent.Merges.Add(box); }
     public void PasteSpecial(int kind, object operation, object skipBlanks, object transpose)

@@ -12,8 +12,8 @@ namespace Outline.Addin
 {
     public sealed class AddinEntry : IExcelAddIn
     {
-        public void AutoOpen() { }
-        public void AutoClose() { Controller.Close(); }
+        public void AutoOpen() { GkdCustomFormulaFunctions.Start(); GkdAiTableFormatting.Start(); GkdAiWelcome.Start(); }
+        public void AutoClose() { GkdCustomFormulaFunctions.Stop(); GkdAiWelcome.Stop(); GkdAiTableFormatting.Stop(); Controller.Close(); }
     }
     internal sealed class SheetSnapshot
     {
@@ -140,12 +140,26 @@ namespace Outline.Addin
     {
         private static readonly List<SheetSnapshot> Undo=new List<SheetSnapshot>();
         private static ResultsForm results;
-        public static void Close(){SmartSumController.ClosePreview();if(results!=null)results.Close();Undo.Clear();}
+        private static GkdCustomFormulaForm customFormulaForm;
+        public static void Close(){if(customFormulaForm!=null)customFormulaForm.CloseForShutdown();GkdAiFunctions.Scheduler.CancelAll();SmartSumController.ClosePreview();if(results!=null)results.Close();Undo.Clear();}
         public static void Execute(string action)
         {
             try
             {
-                if(action=="help"){MessageBox.Show("搞快点 1.4.0\n\n智能分级：按编号重建 Excel 原生分级；可清除分级。\n智能求和：按直接子项预览并生成 SUM 公式，支持撤销本次会话最近一批求和。\n求和校验：只读检查父子项金额，不修改公式或金额。\n分级显示：显示一级、二级、三级或全部展开。\n水电提项目：选择工作表与打印范围，生成清理副本，不修改源工作簿。\n\n恢复上次分级仅恢复最近一批分级与隐藏状态，不撤销单元格编辑；新增/删除行列后禁止恢复。求和撤销与分级恢复均受后续编辑影响。操作不会自动保存工作簿，关闭 Excel 后快照失效。请先保存原文件并在副本中验证。\n\nWindows 桌面版 Excel 2010+（x86/x64），需 .NET Framework 4.8；不含网页/WebView。", "搞快点使用说明");return;}
+                if(action=="customFormula")
+                {
+                    if(customFormulaForm!=null && !customFormulaForm.IsDisposed){customFormulaForm.Activate();return;}
+                    using(var form=new GkdCustomFormulaForm())
+                    {
+                        customFormulaForm=form;
+                        try{form.ShowDialog(new ExcelOwner());}
+                        finally{customFormulaForm=null;}
+                    }
+                    return;
+                }
+                if(action=="aiSettings"){using(var form=new GkdAiSettingsForm())form.ShowDialog(new ExcelOwner());return;}
+                if(action=="aiRefresh" || action=="aiCancel" || action=="aiValues"){GkdAiActions.Run(action);return;}
+                if(action=="help"){using(var form=new GeneralHelpForm())form.ShowDialog(new ExcelOwner());return;}
                 dynamic app=ExcelBridge.App;
                 if(app.ActiveWorkbook==null){MessageBox.Show("请先打开需要处理的工作簿。","搞快点");return;}
                 if(action=="smartSum"){SmartSumController.Run();return;}

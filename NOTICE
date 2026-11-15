@@ -1,0 +1,22 @@
+搞快点 (GKD)
+https://github.com/syydds18/GKD
+
+Licensed under the Apache License, Version 2.0. See LICENSE.
+This license applies to original GKD project material, except where a
+file or component carries a different license or notice. Existing
+copyright and attribution notices remain in effect.
+
+Third-party components retain their own licenses and copyrights:
+
+Excel-DNA / ExcelDna.Integration — zlib license
+Copyright (C) 2005-2021 Govert van Drimmelen
+See third-party/Excel-DNA-LICENSE.txt in the source repository, or
+Excel-DNA-LICENSE.txt in the release archive.
+
+Newtonsoft.Json — MIT license
+Copyright (c) 2007 James Newton-King
+See third-party/Newtonsoft.Json-LICENSE.md in the source repository, or
+Newtonsoft.Json-LICENSE.md in the release archive.
+
+This NOTICE is informational and does not modify the Apache License.
+No endorsement by Microsoft or the third-party authors is implied.

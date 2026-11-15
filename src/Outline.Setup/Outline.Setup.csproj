@@ -10,8 +10,8 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>1.4.0</Version>
-    <Company>搞快点</Company>
+    <Version>1.6.0</Version>
+    <Company>不会开花的草</Company>
     <Product>搞快点安装程序</Product>
     <Title>搞快点安装与卸载</Title>
     <Description>搞快点原生 Excel 加载项的当前用户安装与卸载程序</Description>

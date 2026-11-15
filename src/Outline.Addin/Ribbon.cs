@@ -32,11 +32,38 @@ namespace Outline.Addin
     <group id='grpProject' label='项目提取'>
       <button id='projectExtract' label='水电工程提项目' size='large' imageMso='CopyToFolder' onAction='Run' screentip='水电工程提项目' supertip='选择要导出的工作表和打印范围，在副本中清理；不修改源工作簿。'/>
     </group>
+    <group id='grpAi' label='AI 助手'>
+      <button id='aiSettings' label='AI 设置' size='large' getImage='GetAiImage' onAction='Run' supertip='保存模型配置，检测连接、响应耗时和二维表格输出。使用 GKD(提示词,数据区域)；表格模式需要支持动态数组的 Excel。'/>
+      <button id='customFormula' label='自定义公式' size='large' getImage='GetCustomFormulaImage' onAction='Run' supertip='管理本地公式的含义、参数和算法定义；新建、编辑、导入导出或由 AI 设计，预览并确认后保存。'/>
+      <button id='aiRefresh' label='刷新 AI 结果' imageMso='RefreshAll' onAction='Run' supertip='只重新请求所选 GKD 公式；不会全表刷新。'/>
+      <button id='aiCancel' label='取消 AI 任务' imageMso='CancelRequest' onAction='Run'/>
+      <button id='aiValues' label='结果转为值' imageMso='PasteValues' onAction='Run' supertip='将所选已完成 GKD 结果及其完整溢出区域转为值，便于分享。'/>
+    </group>
     <group id='grpRecovery' label='说明'>
       <button id='help' label='使用说明' imageMso='Help' onAction='Run'/>
     </group>
   </tab></tabs></ribbon>
 </customUI>";
+        }
+        private System.Drawing.Image aiImage;
+        public System.Drawing.Image GetAiImage(IRibbonControl control)
+        {
+            if (aiImage == null)
+            {
+                using (var stream = typeof(OutlineRibbon).Assembly.GetManifestResourceStream("Outline.Addin.Resources.ai-assistant.png"))
+                using (var source = System.Drawing.Image.FromStream(stream))
+                    aiImage = new System.Drawing.Bitmap(source);
+            }
+            return aiImage;
+        }
+        private System.Drawing.Image customImage;
+        public System.Drawing.Image GetCustomFormulaImage(IRibbonControl control)
+        {
+            if (customImage == null)
+                using (var stream = typeof(OutlineRibbon).Assembly.GetManifestResourceStream("Outline.Addin.Resources.custom-formula.png"))
+                using (var source = System.Drawing.Image.FromStream(stream))
+                    customImage = new System.Drawing.Bitmap(source);
+            return customImage;
         }
         public void Run(IRibbonControl control)
         {
